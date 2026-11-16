@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!--
+    CSP 说明：
+    - 主要安全防线是 sandbox + contextIsolation + nodeIntegration:false（见 main.js）。
+    - script-src 保留 'unsafe-eval'/'unsafe-inline' 是为了兼容 epub.js 在渲染时
+      注入的内联脚本/可能的 eval；不允许任何远程脚本、样式、图片来源，保证离线安全。
+    - 书库与阅读内容均来自本地，绝不加载远程资源。
+  -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: manga:; font-src 'self' data: blob:; connect-src 'self' blob: data: manga:; media-src 'self' data: blob:" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>轻小说阅读器</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./manga.css" />
+</head>
+<body class="theme-light">
+
+  <!-- ===================== 书库视图 ===================== -->
+  <div id="library-view" class="view active">
+    <header class="topbar">
+      <div class="app-title">📖 轻小说阅读器</div>
+      <div class="topbar-actions">
+        <button id="btn-import-folder" class="btn btn-primary">导入文件夹</button>
+        <button id="btn-open-file" class="btn">打开文件</button>
+        <button id="btn-open-manga-folder" class="btn">打开漫画</button>
+        <button id="btn-refresh" class="btn">刷新书库</button>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input id="search-input" type="search" placeholder="搜索书名 / 作者 / 文件名" />
+        </div>
+        <button id="btn-view-toggle" class="btn btn-icon" title="切换 网格/列表 视图">▦</button>
+        <button id="btn-settings" class="btn btn-icon" title="设置">⚙</button>
+      </div>
+    </header>
+
+    <div class="library-body">
+      <aside class="folders-panel">
+        <div class="folders-header">
+          <h2>书单 / 分类</h2>
+          <span id="folders-count" class="muted"></span>
+        </div>
+        <div class="source-nav">
+          <button id="source-all" class="source-item active" data-source="all" title="显示全部书籍">
+            <span class="source-icon">📚</span>
+            <span class="source-name">全部书籍</span>
+            <span id="source-all-count" class="source-count">0</span>
+          </button>
+          <ul id="folders-list" class="folders-list source-folders"></ul>
+          <button id="source-single" class="source-item" data-source="__single_imports__" title="通过打开文件单独导入的书籍">
+            <span class="source-icon">📥</span>
+            <span class="source-name">单本导入 / 未分类</span>
+            <span id="source-single-count" class="source-count">0</span>
+          </button>
+        </div>
+        <div class="folders-tip muted">移除文件夹不会删除源文件</div>
+      </aside>
+
+      <main class="books-area">
+        <div class="books-toolbar">
+          <div id="type-tabs" class="type-tabs">
+            <button class="type-tab active" data-type="all">全部</button>
+            <button class="type-tab" data-type="epub">EPUB</button>
+            <button class="type-tab" data-type="txt">TXT</button>
+            <button class="type-tab" data-type="manga">漫画</button>
+          </div>
+          <span id="books-count" class="muted"></span>
+          <div class="library-view-controls">
+            <button id="btn-page-mode" class="btn btn-small" title="切换滚动 / 分页模式">分页模式</button>
+            <select id="page-size-select" class="page-size-select hidden" title="每页显示数量">
+              <option value="20">每页 20</option>
+              <option value="50">每页 50</option>
+              <option value="100">每页 100</option>
+            </select>
+          </div>
+        </div>
+        <div id="books-container" class="books-container grid"></div>
+        <div id="empty-state" class="empty-state">
+          <div class="empty-icon">📚</div>
+          <p id="empty-title" class="empty-title">书库还是空的</p>
+          <p id="empty-hint" class="muted">导入包含 EPUB / TXT 的文件夹，或直接打开 / 拖入 .epub、.txt 文件</p>
+        </div>
+        <div id="books-pager" class="books-pager hidden">
+          <button id="btn-page-prev" class="btn btn-small" disabled>上一页</button>
+          <span id="page-indicator" class="page-indicator">1 / 1</span>
+          <button id="btn-page-next" class="btn btn-small" disabled>下一页</button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ===================== 阅读器视图 ===================== -->
+  <div id="reader-view" class="view">
+    <header class="reader-toolbar">
+      <button id="btn-back" class="btn btn-icon" title="返回书库 (Esc)">←</button>
+      <div class="reader-title">
+        <span id="reader-title-text">—</span>
+        <span id="reader-author-text" class="muted"></span>
+      </div>
+      <div class="reader-actions">
+        <button id="btn-prev-chapter" class="btn btn-icon" title="上一章 (Alt+←)">«</button>
+        <button id="btn-next-chapter" class="btn btn-icon" title="下一章 (Alt+→)">»</button>
+        <button id="btn-toc" class="btn">目录</button>
+        <button id="btn-bookmarks" class="btn">书签</button>
+        <button id="btn-search" class="btn">搜索</button>
+        <button id="btn-reading-mode" class="btn btn-mode" title="切换分页 / 滚动模式">📖 翻页</button>
+        <button id="btn-reader-settings" class="btn">设置</button>
+      </div>
+    </header>
+
+    <div class="reader-body">
+      <aside id="sidebar" class="sidebar hidden">
+        <!-- 目录 -->
+        <div id="panel-toc" class="sidebar-panel">
+          <div class="panel-header"><h3>目录</h3></div>
+          <div id="toc-list" class="panel-scroll"></div>
+        </div>
+        <!-- 书签 -->
+        <div id="panel-bookmarks" class="sidebar-panel hidden">
+          <div class="panel-header">
+            <h3>书签</h3>
+            <button id="btn-add-bookmark" class="btn btn-small">添加当前页</button>
+          </div>
+          <div id="bookmark-list" class="panel-scroll"></div>
+        </div>
+        <!-- 搜索 -->
+        <div id="panel-search" class="sidebar-panel hidden">
+          <div class="panel-header"><h3>搜索</h3></div>
+          <div class="search-row">
+            <input id="reader-search-input" type="search" placeholder="输入关键词" />
+            <label class="scope-label"><input type="checkbox" id="search-scope-full" /> 全书</label>
+            <button id="btn-do-search" class="btn btn-small">搜索</button>
+          </div>
+          <div id="search-result-list" class="panel-scroll"></div>
+        </div>
+        <!-- 设置 -->
+        <div id="panel-settings" class="sidebar-panel hidden">
+          <div class="panel-header"><h3>阅读设置</h3></div>
+          <div id="reader-settings-form" class="settings-form"></div>
+        </div>
+      </aside>
+
+      <main id="reader-main" class="reader-main">
+        <div id="reader-loading" class="reader-loading">
+          <div class="spinner"></div>
+          <p>正在加载 EPUB…</p>
+        </div>
+        <div id="reader-error" class="reader-error hidden"></div>
+        <div id="viewer" class="viewer"></div>
+      </main>
+    </div>
+
+    <footer class="reader-statusbar">
+      <span id="status-percent">0%</span>
+      <span id="status-chapter" class="muted"></span>
+      <span id="status-location" class="muted"></span>
+    </footer>
+  </div>
+
+  <!-- ===================== TXT 阅读器视图（独立于 EPUB） ===================== -->
+  <div id="txt-view" class="view">
+    <header class="reader-toolbar">
+      <button id="txt-btn-back" class="btn btn-icon" title="返回书库 (Esc)">←</button>
+      <div class="reader-title">
+        <span id="txt-title-text">—</span>
+        <span id="txt-author-text" class="muted"></span>
+      </div>
+      <div class="reader-actions">
+        <button id="txt-btn-prev-chapter" class="btn btn-icon" title="上一章 (Alt+←)">«</button>
+        <button id="txt-btn-next-chapter" class="btn btn-icon" title="下一章 (Alt+→)">»</button>
+        <button id="txt-btn-toc" class="btn">目录</button>
+        <button id="txt-btn-bookmarks" class="btn">书签</button>
+        <button id="txt-btn-search" class="btn">搜索</button>
+        <button id="txt-btn-reading-mode" class="btn btn-mode" title="切换分页 / 滚动模式">📖 翻页</button>
+        <button id="txt-btn-settings" class="btn">设置</button>
+      </div>
+    </header>
+
+    <div class="reader-body">
+      <aside id="txt-sidebar" class="sidebar hidden">
+        <div id="txt-panel-toc" class="sidebar-panel">
+          <div class="panel-header"><h3>目录</h3></div>
+          <div id="txt-toc-list" class="panel-scroll"></div>
+        </div>
+        <div id="txt-panel-bookmarks" class="sidebar-panel hidden">
+          <div class="panel-header">
+            <h3>书签</h3>
+            <button id="txt-btn-add-bookmark" class="btn btn-small">添加当前页</button>
+          </div>
+          <div id="txt-bookmark-list" class="panel-scroll"></div>
+        </div>
+        <div id="txt-panel-search" class="sidebar-panel hidden">
+          <div class="panel-header"><h3>搜索</h3></div>
+          <div class="search-row">
+            <input id="txt-search-input" type="search" placeholder="输入关键词" />
+            <label class="scope-label"><input type="checkbox" id="txt-search-full" /> 全文</label>
+            <button id="txt-btn-do-search" class="btn btn-small">搜索</button>
+          </div>
+          <div id="txt-search-results" class="panel-scroll"></div>
+        </div>
+        <div id="txt-panel-settings" class="sidebar-panel hidden">
+          <div class="panel-header"><h3>阅读设置</h3></div>
+          <div id="txt-settings-form" class="settings-form"></div>
+        </div>
+      </aside>
+
+      <main id="txt-main" class="reader-main">
+        <div id="txt-loading" class="reader-loading">
+          <div class="spinner"></div>
+          <p>正在加载 TXT…</p>
+        </div>
+        <div id="txt-error" class="reader-error hidden"></div>
+        <div id="txt-scroll" class="txt-scroll txt-paginated">
+          <div id="txt-content" class="txt-content"></div>
+        </div>
+      </main>
+    </div>
+
+    <footer class="reader-statusbar">
+      <span id="txt-status-percent">0%</span>
+      <span id="txt-status-chapter" class="muted"></span>
+      <span id="txt-status-location" class="muted"></span>
+    </footer>
+  </div>
+
+  <!-- ===================== 漫画阅读器视图（独立于 EPUB / TXT） ===================== -->
+  <div id="manga-view" class="view">
+    <header class="reader-toolbar">
+      <button id="manga-btn-back" class="btn btn-icon" title="返回书库 (Esc)">←</button>
+      <div class="reader-title">
+        <span id="manga-title-text">—</span>
+        <span id="manga-author-text" class="muted"></span>
+      </div>
+      <div class="reader-actions manga-actions">
+        <button id="manga-btn-prev" class="btn btn-icon" title="上一页 (←)">‹</button>
+        <button id="manga-btn-next" class="btn btn-icon" title="下一页 (→)">›</button>
+        <button id="manga-btn-direction" class="btn" title="切换阅读方向">右到左</button>
+        <button id="manga-btn-fit-width" class="btn btn-small">适合宽度</button>
+        <button id="manga-btn-fit-height" class="btn btn-small">适合高度</button>
+        <button id="manga-btn-fit-original" class="btn btn-small">原始大小</button>
+        <button id="manga-btn-toc" class="btn">目录</button>
+        <button id="manga-btn-bookmarks" class="btn">书签</button>
+        <button id="manga-btn-settings" class="btn">设置</button>
+        <span id="manga-page-indicator" class="manga-page-indicator">1 / 1</span>
+      </div>
+    </header>
+
+    <div class="reader-body">
+      <aside id="manga-sidebar" class="sidebar hidden">
+        <div id="manga-panel-toc" class="sidebar-panel">
+          <div class="panel-header"><h3>目录</h3></div>
+          <div id="manga-toc-list" class="panel-scroll"></div>
+        </div>
+        <div id="manga-panel-bookmarks" class="sidebar-panel hidden">
+          <div class="panel-header">
+            <h3>书签</h3>
+            <button id="manga-btn-add-bookmark" class="btn btn-small">添加当前页</button>
+          </div>
+          <div id="manga-bookmark-list" class="panel-scroll"></div>
+        </div>
+        <div id="manga-panel-settings" class="sidebar-panel hidden">
+          <div class="panel-header"><h3>阅读设置</h3></div>
+          <div id="manga-settings-form" class="settings-form"></div>
+        </div>
+      </aside>
+
+      <main id="manga-main" class="reader-main manga-main">
+        <div id="manga-loading" class="reader-loading">
+          <div class="spinner"></div>
+          <p>正在加载漫画…</p>
+        </div>
+        <div id="manga-error" class="reader-error hidden"></div>
+        <div id="manga-stage" class="manga-stage">
+          <div id="manga-spread" class="manga-spread"></div>
+        </div>
+      </main>
+    </div>
+
+    <footer class="reader-statusbar">
+      <span id="manga-status-percent">0%</span>
+      <span id="manga-status-location" class="muted"></span>
+      <span id="manga-status-mode" class="muted"></span>
+    </footer>
+  </div>
+
+  <!-- 全局设置弹窗（书库页） -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>设置</h3>
+        <button id="btn-close-modal" class="btn btn-icon" title="关闭">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="global-settings-form" class="settings-form"></div>
+        <div id="app-info" class="app-info muted"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 书库右键菜单 -->
+  <div id="context-menu" class="context-menu hidden"></div>
+
+  <!-- 轻提示 -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- 本地依赖（离线可用，绝不使用 CDN） -->
+  <!-- 注意：epub.js 0.3.93 的浏览器构建不含 JSZip，必须先加载 jszip.min.js，
+       否则把 ArrayBuffer 交给 ePub() 时会报 “JSZip lib not loaded”。 -->
+  <script src="./vendor/jszip.min.js"></script>
+  <script src="./vendor/epub.min.js"></script>
+  <script src="./library.js"></script>
+  <script src="./reader.js"></script>
+  <script src="./txt-parser.js"></script>
+  <script src="./txt-reader.js"></script>
+  <script src="./manga-reader.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

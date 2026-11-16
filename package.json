@@ -1,0 +1,117 @@
+{
+  "name": "light-novel-reader",
+  "version": "1.2.0",
+  "description": "轻小说 EPUB 阅读器（本地、离线、仅支持无 DRM 的 EPUB）",
+  "type": "module",
+  "main": "main.js",
+  "author": "LightNovelReader",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "node scripts/copy-vendor.js",
+    "copy:vendor": "node scripts/copy-vendor.js",
+    "dev": "node scripts/copy-vendor.js && electron .",
+    "start": "node scripts/copy-vendor.js && electron .",
+    "build:win": "node scripts/copy-vendor.js && electron-builder --win --x64",
+    "build:mobile": "node scripts/build-mobile.js",
+    "cap:add": "npx cap add android",
+    "cap:sync": "npm run build:mobile && npx cap sync android",
+    "cap:open": "npx cap open android",
+    "apk:archive": "node scripts/archive-apk.mjs",
+    "apk:debug": "cd android && gradlew.bat assembleDebug && cd .. && node scripts/archive-apk.mjs",
+    "apk:release": "cd android && gradlew.bat assembleRelease"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "epubjs": "0.3.93",
+    "iconv-lite": "^0.6.3",
+    "jszip": "^3.10.2",
+    "yauzl": "^2.10.0"
+  },
+  "devDependencies": {
+    "@capawesome/capacitor-file-picker": "^7.2.0",
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/cli": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
+    "@capacitor/filesystem": "^7.1.9",
+    "@capacitor/preferences": "^7.0.4",
+    "@zip.js/zip.js": "^2.25.0",
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.example.lightnovelreader",
+    "productName": "LightNovelReader",
+    "copyright": "Copyright © 2026 LightNovelReader",
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "compression": "maximum",
+    "npmRebuild": false,
+    "electronDist": "node_modules/electron/dist",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.cjs",
+      "txt-decoder.js",
+      "renderer/**/*",
+      "package.json",
+      "!**/*.map",
+      "!**/*.log",
+      "!**/README*",
+      "!**/.git/**",
+      "!**/.vscode/**",
+      "!scripts/**",
+      "!build/**",
+      "!dist/**",
+      "!APK/**",
+      "!android/**",
+      "!platform/**",
+      "!www/**",
+      "!node_modules/epubjs/**",
+      "!node_modules/jszip/**"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "轻小说阅读器",
+      "uninstallDisplayName": "轻小说阅读器",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "installerLanguages": [
+        "zh_CN"
+      ],
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "LightNovelReader-Setup-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "LightNovelReader-Portable-${version}-${arch}.${ext}"
+    },
+    "publish": null
+  }
+}

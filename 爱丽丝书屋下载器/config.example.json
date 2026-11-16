@@ -1,0 +1,7 @@
+{
+  "out_dir": "downloads",
+  "workers": 6,
+  "proxy": "",
+  "auto_proxy": true,
+  "overwrite": false
+}

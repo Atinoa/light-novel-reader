@@ -1,0 +1,39 @@
+# 第三方依赖与构建产物
+node_modules/
+dist/
+APK/
+android/
+www/
+build/*
+!build/icon.ico
+renderer/vendor/
+*.apk
+*.exe
+*.msi
+
+# 本地书籍 / 版权内容：绝对不要上传
+这个是epub文件存放点，不可动/
+epub/
+**/epub/
+*.epub
+*.zip
+*.rar
+*.7z
+
+# 下载器本地配置与日志
+爱丽丝书屋下载器/config.json
+爱丽丝书屋_下载日志.txt
+*.log
+
+# 测试、快捷方式、临时文件
+_mk-ui-test.mjs
+启动阅读器*
+*.lnk
+.DS_Store
+Thumbs.db
+
+# 密钥与本地环境
+.env
+.env.*
+*.pfx
+*.key

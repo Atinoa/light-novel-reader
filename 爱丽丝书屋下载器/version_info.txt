@@ -1,0 +1,32 @@
+# PyInstaller 版本资源（UTF-8）
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 0, 0),
+    prodvers=(1, 0, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo(
+      [
+        StringTable(
+          '080404b0',
+          [
+            StringStruct('CompanyName', 'LightNovelReader'),
+            StringStruct('FileDescription', '爱丽丝书屋小说下载器'),
+            StringStruct('FileVersion', '1.0'),
+            StringStruct('InternalName', 'alice_downloader'),
+            StringStruct('OriginalFilename', '爱丽丝书屋下载器.exe'),
+            StringStruct('ProductName', '爱丽丝书屋下载器'),
+            StringStruct('ProductVersion', '1.0')
+          ]
+        )
+      ]
+    ),
+    VarFileInfo([VarStruct('Translation', [2052, 1200])])
+  ]
+)

@@ -1,0 +1,458 @@
+/* platform/mobile/mobile.css — 只在 Capacitor 的 www 构建中加载 */
+
+.mobile-only { display: none; }
+
+@media (max-width: 768px) {
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--bg);
+    overflow-x: hidden;
+  }
+
+  .mobile-only { display: inline-flex; }
+
+  /* ================= 书库顶部：只有汉堡、标题、搜索、更多 ================= */
+  .topbar {
+    position: relative;
+    z-index: 60;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    min-height: 48px;
+    padding: 4px 8px;
+    padding-top: calc(4px + env(safe-area-inset-top));
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border);
+  }
+  .app-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-left: 2px;
+  }
+  .topbar-actions { display: none !important; }
+
+  #mobile-drawer-btn,
+  #mobile-search-btn,
+  #mobile-more-btn {
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+    padding: 0;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* 搜索框默认折叠；展开时覆盖在顶部下方 */
+  .search-box {
+    display: none;
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    top: calc(100% + 4px);
+    z-index: 75;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 5px 7px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+  }
+  body.mobile-search-open .search-box { display: flex; }
+  .search-box .search-icon { display: none; }
+  .search-box input {
+    width: 100%;
+    min-height: 42px;
+    font-size: 16px;
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+
+  /* ================= 书库主体 ================= */
+  #library-view {
+    height: 100dvh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  .library-body {
+    flex: 1;
+    min-height: 0;
+    display: block;
+  }
+  .books-area {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  .books-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 4px 8px;
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+  }
+  .type-tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 2px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .type-tabs::-webkit-scrollbar { display: none; }
+  .type-tab {
+    flex: 0 0 auto;
+    height: 32px;
+    min-height: 32px;
+    padding: 4px 10px;
+    font-size: 13px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+  #books-count {
+    flex: 0 0 auto;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: .8;
+  }
+  .library-view-controls { display: none !important; }
+
+  .books-container {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .books-container.grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 8px;
+    padding: 8px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+  .books-container.list { padding: 6px; }
+
+  .book-card { border-radius: 10px; overflow: hidden; }
+  .book-cover-wrap,
+  .book-cover {
+    aspect-ratio: 3 / 4;
+    border-radius: 8px 8px 0 0;
+  }
+  .book-meta { padding: 6px; gap: 2px; }
+  .book-title {
+    font-size: 12px;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .book-author { font-size: 11px; }
+  .book-file { display: none; }
+  .book-filesize { font-size: 10px; }
+  .book-menu {
+    opacity: 1;
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    top: 4px;
+    right: 4px;
+    font-size: 16px;
+  }
+  .book-type-badge { top: 5px; left: 5px; font-size: 9px; padding: 2px 5px; }
+  .book-format-badge { right: 5px; bottom: 5px; font-size: 8px; padding: 1px 4px; }
+  .empty-state { padding: 24px; }
+
+  /* ================= 书单抽屉（移动端只显示批次书单） ================= */
+  .folders-panel {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(82vw, 320px);
+    z-index: 90;
+    transform: translateX(-105%);
+    transition: transform .22s ease;
+    padding-top: calc(14px + env(safe-area-inset-top));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    box-shadow: 8px 0 28px rgba(0, 0, 0, .25);
+    overflow: hidden;
+  }
+  body.mobile-drawer-open .folders-panel { transform: translateX(0); }
+  .mobile-drawer-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    background: rgba(0, 0, 0, .45);
+  }
+  body.mobile-drawer-open .mobile-drawer-overlay { display: block; }
+  .folders-tip { display: none; }
+  .folder-source[data-batch="0"] { display: none !important; }
+  .folders-header h2 { font-size: 14px; }
+
+  /* ================= 更多操作底部面板 ================= */
+  .mobile-menu-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: rgba(0, 0, 0, .45);
+  }
+  body.mobile-menu-open .mobile-menu-overlay { display: block; }
+
+  .mobile-menu-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 120;
+    background: var(--bg);
+    border-radius: 18px 18px 0 0;
+    padding: 8px 12px calc(14px + env(safe-area-inset-bottom));
+    box-shadow: 0 -10px 32px rgba(0, 0, 0, .22);
+    transform: translateY(110%);
+    transition: transform .22s ease;
+    max-height: 80dvh;
+    overflow-y: auto;
+  }
+  body.mobile-menu-open .mobile-menu-sheet { transform: translateY(0); }
+  .mobile-sheet-handle {
+    width: 36px;
+    height: 4px;
+    margin: 2px auto 8px;
+    border-radius: 999px;
+    background: var(--border);
+  }
+  .mobile-sheet-title {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 2px 4px 6px;
+  }
+  .mobile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 48px;
+    padding: 8px 6px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text);
+    font-size: 15px;
+    text-align: left;
+  }
+  .mobile-menu-item:active { background: var(--bg-hover); }
+  .mobile-menu-item span { width: 26px; text-align: center; font-size: 18px; }
+  .mobile-menu-item b { font-weight: 500; }
+
+  /* ================= 阅读器：100dvh + 沉浸式悬浮控制栏 ================= */
+  #reader-view,
+  #txt-view,
+  #manga-view {
+    height: 100dvh;
+    min-height: 100dvh;
+    width: 100vw;
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #reader-view .reader-toolbar,
+  #txt-view .reader-toolbar,
+  #manga-view .reader-toolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 50px;
+    padding: 4px 8px;
+    padding-top: calc(4px + env(safe-area-inset-top));
+    background: rgba(20, 20, 24, .78);
+    color: #fff;
+    border: 0;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transform: translateY(-110%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .2s ease, opacity .2s ease;
+  }
+  #reader-view.mobile-controls-visible .reader-toolbar,
+  #txt-view.mobile-controls-visible .reader-toolbar,
+  #manga-view.mobile-controls-visible .reader-toolbar {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #reader-view .reader-toolbar .btn,
+  #txt-view .reader-toolbar .btn,
+  #manga-view .reader-toolbar .btn {
+    color: #fff;
+    background: rgba(255, 255, 255, .12);
+    border-color: transparent;
+    min-height: 36px;
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  #reader-view .reader-toolbar .btn-icon,
+  #txt-view .reader-toolbar .btn-icon,
+  #manga-view .reader-toolbar .btn-icon {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+  }
+  .reader-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.15;
+    overflow: hidden;
+  }
+  .reader-title span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+  .reader-title .muted { font-size: 11px; opacity: .7; }
+  .reader-actions {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 3px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .reader-actions::-webkit-scrollbar { display: none; }
+  .reader-actions .btn { flex: 0 0 auto; }
+
+  #reader-view .reader-statusbar,
+  #txt-view .reader-statusbar,
+  #manga-view .reader-statusbar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    padding: 6px 12px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    background: rgba(20, 20, 24, .72);
+    color: #fff;
+    border: 0;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transform: translateY(110%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform .2s ease, opacity .2s ease;
+  }
+  #reader-view.mobile-controls-visible .reader-statusbar,
+  #txt-view.mobile-controls-visible .reader-statusbar,
+  #manga-view.mobile-controls-visible .reader-statusbar {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #reader-view .reader-body,
+  #txt-view .reader-body,
+  #manga-view .reader-body {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+  #reader-view .reader-main,
+  #txt-view .reader-main,
+  #manga-view .reader-main {
+    height: 100%;
+    min-height: 0;
+  }
+  #viewer,
+  #txt-scroll,
+  #manga-stage,
+  .manga-spread {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  #viewer iframe { width: 100%; height: 100dvh; border: 0; }
+  .reader-loading,
+  .reader-error {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background: var(--bg);
+  }
+
+  .txt-content {
+    width: 100%;
+    max-width: none;
+    padding: 14px 18px calc(42px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+  }
+  .txt-line { font-size: 17px; line-height: 1.85; }
+
+  /* 阅读器侧栏在手机上不要挤掉正文 */
+  #reader-view .sidebar,
+  #txt-view .sidebar,
+  #manga-view .sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 65;
+    width: min(86vw, 360px);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .manga-spread img { max-width: 100%; max-height: 100%; }
+  #manga-stage { touch-action: pan-y pinch-zoom; }
+
+  /* 菜单/抽屉的触控反馈 */
+  .source-item { min-height: 42px; }
+  .context-menu { min-width: 210px; }
+  .context-menu-item { min-height: 48px; font-size: 15px; }
+  .modal { width: min(94vw, 520px); max-height: 86dvh; }
+}
