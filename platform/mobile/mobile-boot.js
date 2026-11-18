@@ -126,6 +126,14 @@
     moreBtn.textContent = '⋯';
     topbar.appendChild(moreBtn);
 
+    const importBtn = document.createElement('button');
+    importBtn.id = 'mobile-import-btn';
+    importBtn.className = 'btn btn-icon mobile-only';
+    importBtn.title = '导入文件';
+    importBtn.setAttribute('aria-label', '导入文件');
+    importBtn.textContent = '＋';
+    topbar.insertBefore(importBtn, searchBtn);
+
     const overlay = document.createElement('div');
     overlay.className = 'mobile-drawer-overlay';
     document.body.appendChild(overlay);
@@ -139,6 +147,65 @@
     document.getElementById('source-all')?.addEventListener('click', closeDrawer);
     document.getElementById('source-single')?.addEventListener('click', closeDrawer);
 
+    const safeImport = async (task, label) => {
+      try {
+        await task();
+      } catch (e) {
+        console.error(label, e);
+        if (window.App && typeof App.toast === 'function') {
+          App.toast(`${label}：${(e && e.message) || e}`);
+        }
+      }
+    };
+
+    // 顶部“＋导入”Action Sheet
+    const importOverlay = document.createElement('div');
+    importOverlay.className = 'mobile-import-overlay';
+    const importSheet = document.createElement('div');
+    importSheet.className = 'mobile-import-sheet';
+    importSheet.innerHTML = `
+      <div class="mobile-sheet-handle"></div>
+      <div class="mobile-sheet-title">导入</div>
+      <button class="mobile-menu-item" data-import="files">
+        <span>📚</span>
+        <span class="mobile-menu-text"><b>选择文件（可多选）</b><small>EPUB / TXT / PKZ / CBZ</small></span>
+      </button>
+      <button class="mobile-menu-item" data-import="manga">
+        <span>🖼️</span>
+        <span class="mobile-menu-text"><b>选图片作为漫画</b><small>一次选择多张图片</small></span>
+      </button>
+      <button class="mobile-menu-item mobile-menu-cancel" data-import="cancel"><b>取消</b></button>
+    `;
+    document.body.appendChild(importOverlay);
+    document.body.appendChild(importSheet);
+
+    const closeImport = () => document.body.classList.remove('mobile-import-open');
+    const openImport = () => {
+      document.body.classList.remove('mobile-drawer-open', 'mobile-menu-open', 'mobile-search-open');
+      document.body.classList.add('mobile-import-open');
+    };
+    importBtn.addEventListener('click', () => {
+      if (document.body.classList.contains('mobile-import-open')) closeImport();
+      else openImport();
+    });
+    importOverlay.addEventListener('click', closeImport);
+    importSheet.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-import]');
+      if (!btn) return;
+      const kind = btn.dataset.import;
+      closeImport();
+      if (kind === 'cancel') return;
+      importBtn.disabled = true;
+      importBtn.classList.add('busy');
+      try {
+        if (kind === 'files') await safeImport(() => App.openFile(), '导入失败');
+        else if (kind === 'manga') await safeImport(() => App.openMangaFolder(), '漫画导入失败');
+      } finally {
+        importBtn.disabled = false;
+        importBtn.classList.remove('busy');
+      }
+    });
+
     // 更多操作底部面板
     const menuOverlay = document.createElement('div');
     menuOverlay.className = 'mobile-menu-overlay';
@@ -147,8 +214,6 @@
     sheet.innerHTML = `
       <div class="mobile-sheet-handle"></div>
       <div class="mobile-sheet-title">更多操作</div>
-      <button class="mobile-menu-item" data-action="import"><span>📥</span><b>导入文件（可多选）</b></button>
-      <button class="mobile-menu-item" data-action="manga"><span>🖼️</span><b>选图片作为漫画</b></button>
       <button class="mobile-menu-item" data-action="refresh"><span>🔄</span><b>刷新书库</b></button>
       <button class="mobile-menu-item" data-action="view"><span>▦</span><b>切换 网格 / 列表</b></button>
       <button class="mobile-menu-item" data-action="page"><span>📖</span><b>切换 分页 / 滚动</b></button>
@@ -163,6 +228,7 @@
       const pageBtn = sheet.querySelector('[data-action="page"] b');
       if (viewBtn) viewBtn.textContent = Library.viewMode === 'grid' ? '切换为列表视图' : '切换为网格视图';
       if (pageBtn) pageBtn.textContent = Library.pageMode === 'paginated' ? '切换为滚动模式' : '切换为分页模式';
+      document.body.classList.remove('mobile-drawer-open', 'mobile-import-open', 'mobile-search-open');
       document.body.classList.add('mobile-menu-open');
     };
     moreBtn.addEventListener('click', openMenu);
@@ -173,9 +239,7 @@
       if (!btn) return;
       const action = btn.dataset.action;
       closeMenu();
-      if (action === 'import') await App.openFile();
-      else if (action === 'manga') await App.openMangaFolder();
-      else if (action === 'refresh') await App.refreshLibrary();
+      if (action === 'refresh') await App.refreshLibrary();
       else if (action === 'view') Library.toggleView();
       else if (action === 'page') Library.setPageMode(Library.pageMode === 'paginated' ? 'scroll' : 'paginated');
       else if (action === 'settings') Library.openGlobalSettings();

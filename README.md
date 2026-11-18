@@ -85,8 +85,8 @@ npm run build:win
 
 脚本会先复制 vendor，再调用 electron-builder 生成：
 
-- NSIS 安装包：`dist/LightNovelReader-Setup-1.2.0-x64.exe`
-- 便携版：`dist/LightNovelReader-Portable-1.2.0-x64.exe`
+- NSIS 安装包：`dist/LightNovelReader-Setup-1.3.0-x64.exe`
+- 便携版：`dist/LightNovelReader-Portable-1.3.0-x64.exe`
 
 产物统一输出在 `dist/` 目录。
 
@@ -252,6 +252,31 @@ python scripts/make-icon.py
 ---
 
 ## 更新日志
+
+### v1.3.0（2026-11-18）
+
+**Android 多文件导入修复**
+
+- 修复 FileProvider 未配置 `<files-path>` 导致 `FilePicker.copyFile` 无法把
+  SAF `content://` 文件复制到 `Directory.Data/imports/`，表现为选完文件后没有反应。
+- 复制前先创建 `imports/` 目录，避免目标父目录不存在。
+- 原生 FilePicker 失败时不再静默二次弹出网页 input；已选中但读取失败会明确 toast。
+- 网页 `<input type="file" multiple>` 兜底改为 1×1 透明定位而不是 `display:none`，
+  增加取消/失焦处理，避免 Promise 永远挂起。
+- 大文件不常驻 `fileCache`，降低 500MB PKZ 的内存占用；仍使用 ZIP Blob 切片读取。
+
+**移动端 UI**
+
+- 顶部新增蓝色“＋”导入按钮，点击弹出底部 Action Sheet：
+  选择文件（多选）/ 选图片作为漫画 / 取消。
+- 顶部只保留：菜单、标题、＋导入、搜索、更多。
+- 所有 emoji/符号图标按钮统一 40×40，`inline-flex + center` 双向居中。
+- “打开漫画、刷新、视图、分页、设置”收进更多菜单，避免顶部拥挤。
+
+**构建**
+
+- Windows：`dist/LightNovelReader-Setup-1.3.0-x64.exe`、`dist/LightNovelReader-Portable-1.3.0-x64.exe`
+- Android：`轻小说阅读器-v1.3-android-debug.apk`（versionCode 4，归档于 `APK/`）
 
 ### v1.2.0（2026-11-15）
 

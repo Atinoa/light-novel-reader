@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Capacitor Filesystem Directory.Data 位于应用私有 files/ 目录；
+         FilePicker.copyFile 需要能通过 FileProvider 写入这里，否则
+         Destination ... not found 会导致“选完文件没反应”。 -->
+    <files-path name="files" path="." />
+    <external-path name="my_images" path="." />
+    <cache-path name="my_cache_images" path="." />
+</paths>

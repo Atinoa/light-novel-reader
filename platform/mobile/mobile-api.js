@@ -24,21 +24,46 @@
   // SAF/文件选择器：Android WebView 的原生 <input type=file> 即 SAF
   // ---------------------------------------------------------------------------
   class WebFilePicker {
-    pickFiles({ accept = '.epub,.txt,.zip,.cbz,.pkz', multiple = true } = {}) {
+    pickFiles({ accept = '.epub,.txt,.zip,.cbz,.pkz,application/epub+zip,text/plain,application/zip,application/octet-stream', multiple = true } = {}) {
       return new Promise((resolve) => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = accept;
-        input.multiple = multiple;
-        input.style.position = 'fixed';
-        input.style.left = '-9999px';
+        input.multiple = multiple !== false;
+        input.tabIndex = -1;
+        input.setAttribute('aria-hidden', 'true');
+        // 不要用 display:none：部分 Android WebView 会拒绝打开不可见 input。
+        // 用 1x1 透明元素，既不可见又能接收用户手势。
+        input.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;z-index:-1;';
         document.body.appendChild(input);
-        input.onchange = () => {
-          const files = Array.from(input.files || []);
+
+        let settled = false;
+        let focusTimer = null;
+        const cleanup = () => {
+          if (focusTimer) clearTimeout(focusTimer);
+          window.removeEventListener('focus', onWindowFocus);
           input.remove();
+        };
+        const finish = (files) => {
+          if (settled) return;
+          settled = true;
+          cleanup();
           resolve(files);
         };
-        input.oncancel = () => { input.remove(); resolve([]); };
+        const onWindowFocus = () => {
+          // 某些 Android WebView 取消选择时不触发 change/oncancel；
+          // 回到页面后短暂等待，确认没有文件就按“取消”处理，避免 Promise 永远挂起。
+          setTimeout(() => {
+            if (!settled) finish([]);
+          }, 700);
+        };
+
+        input.onchange = () => finish(Array.from(input.files || []));
+        input.oncancel = () => finish([]);
+        // 选择器打开后窗口通常失焦，关闭时重新聚焦。延迟注册避免刚 append 时误触发。
+        setTimeout(() => {
+          if (!settled) window.addEventListener('focus', onWindowFocus, { once: true });
+        }, 350);
         input.click();
       });
     }
@@ -266,7 +291,9 @@
   }
 
   async function storeFile(file, path) {
-    fileCache.set(path, file);
+    // 大文件不常驻 fileCache：重新打开时通过 nativePath 从 Filesystem 取，
+    // 避免 500MB PKZ 在 WebView 里同时保留 File/Blob 两份内存。
+    if (file.size <= LARGE_ARCHIVE) fileCache.set(path, file);
     const rec = {
       name: file.name,
       size: file.size,
@@ -354,6 +381,15 @@
     try {
       if (fs && typeof fp.copyFile === 'function') {
         // 让原生层把 content:// 复制成 app 私有 file://，避免把整个文件读成 base64
+        // 注意：getUri 只负责生成 URI，不会创建 imports/ 目录；必须先 mkdir。
+        try {
+          if (typeof fs.mkdir === 'function') {
+            await fs.mkdir({ path: 'imports', directory: 'DATA', recursive: true });
+          }
+        } catch (mkdirError) {
+          // 目录已存在时某些实现会抛错，忽略并继续 getUri
+          console.warn('mkdir imports skipped:', mkdirError);
+        }
         const { uri } = await fs.getUri({ path: target, directory: 'DATA' });
         await fp.copyFile({ from: item.path, to: uri, overwrite: true });
         const blob = await (await fetch(cap.convertFileSrc(uri))).blob();
@@ -381,34 +417,74 @@
   async function pickNativeFiles() {
     const fp = nativeFilePicker();
     if (!fp || typeof fp.pickFiles !== 'function') throw new Error('原生文件选择器不可用');
-    const result = await fp.pickFiles({ multiple: true, readData: false });
+
+    let result;
+    try {
+      result = await fp.pickFiles({ multiple: true, readData: false });
+    } catch (e) {
+      const err = new Error('无法打开系统文件选择器：' + ((e && e.message) || e));
+      err.code = 'PICKER_OPEN_FAILED';
+      err.cause = e;
+      throw err;
+    }
+
     const picked = (result && result.files) || [];
+    if (!picked.length) return [];
+
     const files = [];
+    const failed = [];
     for (const item of picked) {
-      files.push(await nativePickedToFile(item));
+      try {
+        files.push(await nativePickedToFile(item));
+      } catch (e) {
+        console.error('read picked file failed:', item && item.name, e);
+        failed.push(item && item.name ? item.name : '未知文件');
+      }
+    }
+
+    if (!files.length && failed.length) {
+      const err = new Error('已选中文件，但读取失败：' + failed.join('、'));
+      err.code = 'FILE_READ_FAILED';
+      throw err;
+    }
+    if (failed.length) {
+      files.__warnings = failed;
+      if (window.App && typeof window.App.toast === 'function') {
+        setTimeout(() => window.App.toast(`${failed.length} 个文件读取失败，已导入其余文件`), 200);
+      }
     }
     return files;
   }
 
   async function pickBookFiles() {
-    if (nativeFilePicker()) {
+    const fp = nativeFilePicker();
+    if (fp) {
       try {
         return await pickNativeFiles();
       } catch (e) {
-        console.warn('native picker failed, fallback to input', e);
+        // 只有“系统选择器打不开”才回退 HTML；已经选中但读取失败时不再弹第二次选择器
+        if (e && e.code === 'PICKER_OPEN_FAILED') {
+          console.warn('native picker open failed, fallback to input', e);
+          return picker.pickFiles();
+        }
+        throw e;
       }
     }
     return picker.pickFiles();
   }
 
   async function pickImageFiles() {
-    if (nativeFilePicker()) {
+    const fp = nativeFilePicker();
+    if (fp) {
       try {
         const all = await pickNativeFiles();
-        const images = all.filter((f) => isImage(f.name));
-        if (images.length) return images;
+        return all.filter((f) => isImage(f.name));
       } catch (e) {
-        console.warn('native image picker failed, fallback to input', e);
+        if (e && e.code === 'PICKER_OPEN_FAILED') {
+          console.warn('native image picker open failed, fallback to input', e);
+          return picker.pickFiles({ accept: 'image/*', multiple: true });
+        }
+        throw e;
       }
     }
     return picker.pickFiles({ accept: 'image/*', multiple: true });
@@ -451,7 +527,7 @@
     const books = [];
     for (const f of files) books.push(await makeBook(f, batch.path));
     await ensureBatchFolder(batch);
-    return { ok: true, books, batch };
+    return { ok: true, books, batch, warnings: files.__warnings || [] };
   }
 
   // ---------------------------------------------------------------------------
